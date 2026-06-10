@@ -95,145 +95,146 @@ class StockController extends Controller
     /**
      * Stock Opname (Fisik Inventory)
      */
-  public function opname(Request $request)
-{
-    try {
+    public function opname(Request $request)
+    {
+        try {
 
-        $validated = $request->validate([
-            'warehouse_id' => 'required|exists:warehouses,id',
-            'adjustments' => 'required|array|min:1',
-            'adjustments.*.stock_id' => 'required|exists:stocks,id',
-            'adjustments.*.quantity_after' => 'required|integer|min:0',
-        ]);
-
-        $adjustments = [];
-        $stockOpnames = [];
-
-        foreach ($validated['adjustments'] as $adj) {
-
-            $stock = Stock::findOrFail(
-                $adj['stock_id']
-            );
-
-            $quantity_before =
-                $stock->quantity;
-
-            $quantity_after =
-                $adj['quantity_after'];
-
-            $difference =
-                $quantity_after -
-                $quantity_before;
-
-            // VALIDASI:
-            // kalau tidak ada perubahan skip
-            if ($difference == 0) {
-                continue;
-            }
-
-            // simpan ke stock_opname
-            $opname = \App\Models\StockOpname::create([
-                'reference_number' =>
-                    'OPN-' . now()->format('YmdHis'),
-
-                'warehouse_id' =>
-                    $validated['warehouse_id'],
-
-                'medicine_id' =>
-                    $stock->medicine_id,
-
-                'system_quantity' =>
-                    $quantity_before,
-
-                'physical_quantity' =>
-                    $quantity_after,
-
-                'difference' =>
-                    $difference,
-
-                'status' =>
-                    'approved',
-
-                'created_by' =>
-                    Auth::id(),
-
-                'approved_by' =>
-                    Auth::id(),
-
-                'approved_at' =>
-                    now(),
-
-                'notes' =>
-                    'Stock opname system'
+            $validated = $request->validate([
+                'warehouse_id' => 'required|exists:warehouses,id',
+                'adjustments' => 'required|array|min:1',
+                'adjustments.*.stock_id' => 'required|exists:stocks,id',
+                'adjustments.*.quantity_after' => 'required|integer|min:0',
             ]);
 
-            $stockOpnames[] = $opname;
+            $adjustments = [];
+            $stockOpnames = [];
 
-            // simpan adjustment
-            $adjustment =
-                StockAdjustment::create([
+            foreach ($validated['adjustments'] as $adj) {
 
-                    'stock_id' =>
-                        $stock->id,
+                $stock = Stock::findOrFail(
+                    $adj['stock_id']
+                );
 
-                    'quantity_before' =>
+                $quantity_before =
+                    $stock->quantity;
+
+                $quantity_after =
+                    $adj['quantity_after'];
+
+                $difference =
+                    $quantity_after -
+                    $quantity_before;
+
+                // VALIDASI:
+                // kalau tidak ada perubahan skip
+                if ($difference == 0) {
+                    continue;
+                }
+
+                // simpan ke stock_opname
+                $opname = \App\Models\StockOpname::create([
+                    'reference_number' =>
+                        'OPN-' . now()->format('YmdHis'),
+
+                    'warehouse_id' =>
+                        $validated['warehouse_id'],
+
+                    'medicine_id' =>
+                        $stock->medicine_id,
+
+                    'system_quantity' =>
                         $quantity_before,
 
-                    'quantity_after' =>
+                    'physical_quantity' =>
                         $quantity_after,
 
-                    'adjustment_qty' =>
+                    'difference' =>
                         $difference,
 
-                    'type' =>
-                        'koreksi',
+                    'status' =>
+                        'approved',
 
-                    'reason' =>
-                        'Stock opname',
-
-                    'adjusted_by' =>
+                    'created_by' =>
                         Auth::id(),
+
+                    'approved_by' =>
+                        Auth::id(),
+
+                    'approved_at' =>
+                        now(),
+
+                    'notes' =>
+                        'Stock opname system'
                 ]);
 
-            // update stock
-            $stock->update([
-                'quantity' =>
-                    $quantity_after
-            ]);
+                $stockOpnames[] = $opname;
 
-            $adjustments[] =
-                $adjustment;
-        }
+                // simpan adjustment
+                $adjustment =
+                    StockAdjustment::create([
 
-        // kalau tidak ada perubahan
-        if (count($adjustments) == 0) {
+                        'stock_id' =>
+                            $stock->id,
+
+                        'quantity_before' =>
+                            $quantity_before,
+
+                        'quantity_after' =>
+                            $quantity_after,
+
+                        'adjustment_qty' =>
+                            $difference,
+
+                        'type' =>
+                            'koreksi',
+
+                        'reason' =>
+                            'Stock opname',
+
+                        'adjusted_by' =>
+                            Auth::id(),
+                    ]);
+
+                // update stock
+                $stock->update([
+                    'quantity' =>
+                        $quantity_after
+                ]);
+
+                $adjustments[] =
+                    $adjustment;
+            }
+
+            // kalau tidak ada perubahan
+            if (count($adjustments) == 0) {
+
+                return response()->json([
+                    'message' =>
+                        'Tidak ada perubahan stok'
+                ], 422);
+            }
 
             return response()->json([
                 'message' =>
-                    'Tidak ada perubahan stok'
-            ], 422);
+                    'Stock opname berhasil',
+
+                'adjustments' =>
+                    $adjustments,
+
+                'stock_opname' =>
+                    $stockOpnames
+
+            ], 201);
+
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'message' =>
+                    $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'message' =>
-                'Stock opname berhasil',
-
-            'adjustments' =>
-                $adjustments,
-
-            'stock_opname' =>
-                $stockOpnames
-
-        ], 201);
-
-    } catch (\Exception $e) {
-
-        return response()->json([
-            'message' =>
-                $e->getMessage()
-        ], 500);
     }
-}
+
     /**
      * Get Low Stock Items
      */
@@ -332,119 +333,59 @@ class StockController extends Controller
         }
     }
 
-/**
- * Get all stocks
- */
-public function index(Request $request)
-{
-    try {
-
-        $query = Stock::with([
-            'medicine',
-            'warehouse',
-            'shelf'
-        ]);
-
-        // filter warehouse
-        if ($request->warehouse_id) {
-            $query->where(
-                'warehouse_id',
-                $request->warehouse_id
-            );
-        }
-
-        // search medicine
-        if ($request->search) {
-            $query->whereHas(
-                'medicine',
-                function ($q) use ($request) {
-                    $q->where(
-                        'name',
-                        'like',
-                        '%' . $request->search . '%'
-                    )
-                    ->orWhere(
-                        'code',
-                        'like',
-                        '%' . $request->search . '%'
-                    );
-                }
-            );
-        }
-
-        $stocks = $query
-            ->latest()
-            ->paginate(
-                $request->per_page ?? 20
-            );
-
-        return response()->json([
-            'message' => 'Stocks retrieved successfully',
-            'data' => $stocks
-        ], 200);
-
-    } catch (\Exception $e) {
-
-        return response()->json([
-            'message' => $e->getMessage()
-        ], 500);
-    }
-}
-
-/**
- * Get stock detail
- */
-public function show($id)
-{
-    try {
-
-        $stock = Stock::with([
-            'medicine',
-            'warehouse',
-            'shelf'
-        ])->findOrFail($id);
-
-        return response()->json([
-            'message' => 'Stock detail retrieved',
-            'data' => $stock
-        ], 200);
-
-    } catch (\Exception $e) {
-
-        return response()->json([
-            'message' => $e->getMessage()
-        ], 404);
-    }
-}
-/**
-     * Store newly created stock (Tambah Stok Baru)
+    /**
+     * Get all stocks
      */
-    public function store(Request $request)
+    public function index(Request $request)
     {
         try {
-            $validated = $request->validate([
-                'medicine_id' => 'required|exists:medicines,id',
-                'warehouse_id' => 'required|exists:warehouses,id',
-                'shelf_id' => 'nullable',
-                'quantity' => 'required|integer|min:1',
-                'batch_number' => 'required|string',
-                'expired_date' => 'required|date',
+
+            $query = Stock::with([
+                'medicine',
+                'warehouse',
+                'shelf'
             ]);
 
-            // Simpan stok ke database
-            $stock = Stock::create($validated);
+            // filter warehouse
+            if ($request->warehouse_id) {
+                $query->where(
+                    'warehouse_id',
+                    $request->warehouse_id
+                );
+            }
+
+            // search medicine
+            if ($request->search) {
+                $query->whereHas(
+                    'medicine',
+                    function ($q) use ($request) {
+                        $q->where(
+                            'name',
+                            'like',
+                            '%' . $request->search . '%'
+                        )
+                        ->orWhere(
+                            'code',
+                            'like',
+                            '%' . $request->search . '%'
+                        );
+                    }
+                );
+            }
+
+            $stocks = $query
+                ->latest()
+                ->paginate(
+                    $request->per_page ?? 20
+                );
 
             return response()->json([
-                'message' => 'Stok berhasil ditambahkan',
-                'data' => $stock
-            ], 201);
+                'message' => 'Stocks retrieved successfully',
+                'data' => $stocks
+            ], 200);
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'message' => 'Validasi gagal, pastikan ID Obat & Gudang benar',
-                'errors' => $e->errors()
-            ], 422);
         } catch (\Exception $e) {
+
             return response()->json([
                 'message' => $e->getMessage()
             ], 500);
@@ -452,22 +393,84 @@ public function show($id)
     }
 
     /**
-     * Delete stock (Hapus Stok)
+     * Get stock detail
      */
-    public function destroy($id)
+    public function show($id)
     {
         try {
-            $stock = Stock::findOrFail($id);
-            $stock->delete();
+
+            $stock = Stock::with([
+                'medicine',
+                'warehouse',
+                'shelf'
+            ])->findOrFail($id);
 
             return response()->json([
-                'message' => 'Stok berhasil dihapus'
+                'message' => 'Stock detail retrieved',
+                'data' => $stock
             ], 200);
 
         } catch (\Exception $e) {
+
             return response()->json([
-                'message' => 'Stok tidak ditemukan'
+                'message' => $e->getMessage()
             ], 404);
+        }
+    }
+
+
+  /**
+     * Store a newly created stock in storage.
+     */
+    public function store(Request $request)
+    {
+        try {
+            // 1. Normalisasi input Qty agar fleksibel (bisa qty / quantity)
+            $quantityInput = $request->input('qty') ?? $request->input('quantity');
+            
+            // 2. Normalisasi tanggal expired (bisa expiration_date / expired_date)
+            $expiredInput = $request->input('expiration_date') ?? $request->input('expired_date');
+
+            // Inject kembali ke request agar terbaca mulus oleh validator
+            $request->merge([
+                'qty' => $quantityInput,
+                'expiration_date' => $expiredInput
+            ]);
+
+            // 3. Jalankan Validasi
+            $validated = $request->validate([
+                'medicine_id'     => 'required|exists:medicines,id',
+                'warehouse_id'    => 'required|exists:warehouses,id',
+                'qty'             => 'required|integer|min:1',
+                'expiration_date' => 'nullable|date',
+            ]);
+
+            // 4. Create record dengan fallback aman jika 'expiration_date' tidak lolos / bernilai null
+            $stock = Stock::create([
+                'medicine_id'  => $validated['medicine_id'],
+                'warehouse_id' => $validated['warehouse_id'],
+                'quantity'     => $validated['qty'],
+                'expired_date' => $validated['expiration_date'] ?? null, // Menggunakan operator ?? agar aman dari undefined key
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Stok baru berhasil ditambahkan!',
+                'data'    => $stock->load('medicine', 'warehouse')
+            ], 201);
+
+        } catch (\Illuminate\Validation\ValidationException $v) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors'  => $v->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 }

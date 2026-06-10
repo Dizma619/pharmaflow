@@ -9,38 +9,23 @@ class Warehouse extends Model
 {
     use HasFactory;
 
+    // Mass assignment agar data dari Vue diizinkan masuk ke MySQL
     protected $fillable = [
         'name',
-        'description',
+        'city',
+        'province',
         'address',
-        'is_active'
-    ];
-
-    protected $casts = [
-        'is_active' => 'boolean'
+        'capacity',
+        'status'
     ];
 
     /**
-     * Relationships
+     * Relasi ke model Shelf / Rak
+     * (Satu gudang mempunyai banyak rak)
      */
     public function shelves()
     {
+        // Catatan: Jika nama file model rak lu adalah 'Rak.php', ubah 'Shelf::class' menjadi 'Rak::class'
         return $this->hasMany(Shelf::class);
-    }
-
-    public function stocks()
-    {
-        return $this->hasMany(Stock::class);
-    }
-
-    /**
-     * Scope active warehouse
-     */
-    public function scopeActive($query)
-    {
-        return $query->where(
-            'is_active',
-            true
-        );
     }
 }

@@ -16,13 +16,17 @@ class CategoryController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = Category::query();
+            // Ditambahkan withCount('medicines') agar jumlah produk otomatis terhitung
+            $query = Category::query()->withCount('medicines');
 
             // Search
             if ($request->has('search')) {
                 $search = $request->get('search');
-                $query->where('name', 'like', "%$search%")
+                // Dibungkus closure agar klausa 'orWhere' tidak mengacaukan filter lainnya
+                $query->where(function($q) use ($search) {
+                    $q->where('name', 'like', "%$search%")
                       ->orWhere('description', 'like', "%$search%");
+                });
             }
 
             // Filter active

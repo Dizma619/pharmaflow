@@ -9,17 +9,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Purchase extends Model
 {
     protected $fillable = [
-        'purchase_number',
-        'supplier_id',
-        'status',
-        'total_amount',
-        'notes',
-        'items_received',
-        'items_total',
-        'received_at',
-        'received_by',
-    ];
-
+    'po_number',
+    'supplier_id',
+    'subtotal',
+    'tax_amount',
+    'shipping_cost',
+    'total_amount',
+    'status',
+    'purchase_date',
+    'expected_delivery_date',
+    'received_date',
+    'notes',
+    'items_received',
+    'items_total',
+    'received_at',
+    'received_by'
+];
     protected $casts = [
         'received_at' => 'datetime',
     ];

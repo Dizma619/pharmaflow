@@ -18,8 +18,5 @@ class DatabaseSeeder extends Seeder
             PromotionSeeder::class,
             VoucherSeeder::class,
         ]);
-        $this->call([
-        TransactionSeeder::class,
-    ]);
     }
 }

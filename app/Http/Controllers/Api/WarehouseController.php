@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class WarehouseController extends Controller
 {
@@ -14,24 +15,23 @@ class WarehouseController extends Controller
     public function index()
     {
         try {
-
-            $warehouses =
-                Warehouse::latest()
-                ->get();
+            // Kita bungkus dengan pengaman. Jika relasi 'shelves' bermasalah, kita tangkap errornya.
+            // Pastikan di model Warehouse sudah ada function shelves()
+            $warehouses = Warehouse::withCount('shelves')->latest()->get();
 
             return response()->json([
-                'message' =>
-                    'Warehouses retrieved successfully',
-
-                'data' =>
-                    $warehouses
+                'success' => true,
+                'message' => 'Warehouses retrieved successfully',
+                'data'    => $warehouses
             ], 200);
 
         } catch (\Exception $e) {
-
+            // JIKA CRASH, KODE INI AKAN MENAMPILKAN PESAN ERROR ASLINYA DI BROWSER
             return response()->json([
-                'message' =>
-                    $e->getMessage()
+                'success' => false,
+                'message' => 'Error di index: ' . $e->getMessage(),
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine()
             ], 500);
         }
     }
@@ -42,34 +42,37 @@ class WarehouseController extends Controller
     public function store(Request $request)
     {
         try {
+            $validated = $request->validate([
+                'name'     => 'required|string|max:255',
+                'city'     => 'required|string|max:255',
+                'province' => 'required|string|max:255',
+                'address'  => 'nullable|string',
+                'capacity' => 'nullable|integer|min:0',
+                'status'   => 'nullable|string'
+            ]);
 
-            $validated =
-                $request->validate([
-                    'name' =>
-                        'required|string|max:255',
+            if (!isset($validated['status'])) {
+                $validated['status'] = 'aktif';
+            }
 
-                    'location' =>
-                        'nullable|string'
-                ]);
-
-            $warehouse =
-                Warehouse::create(
-                    $validated
-                );
+            $warehouse = Warehouse::create($validated);
 
             return response()->json([
-                'message' =>
-                    'Warehouse created successfully',
-
-                'data' =>
-                    $warehouse
+                'success' => true,
+                'message' => 'Warehouse created successfully',
+                'data'    => $warehouse
             ], 201);
 
-        } catch (\Exception $e) {
-
+        } catch (\Illuminate\Validation\ValidationException $v) {
             return response()->json([
-                'message' =>
-                    $e->getMessage()
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors'  => $v->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
             ], 500);
         }
     }
@@ -80,23 +83,18 @@ class WarehouseController extends Controller
     public function show(string $id)
     {
         try {
-
-            $warehouse =
-                Warehouse::findOrFail($id);
+            $warehouse = Warehouse::withCount('shelves')->findOrFail($id);
 
             return response()->json([
-                'message' =>
-                    'Warehouse retrieved',
-
-                'data' =>
-                    $warehouse
+                'success' => true,
+                'message' => 'Warehouse retrieved',
+                'data'    => $warehouse
             ], 200);
 
         } catch (\Exception $e) {
-
             return response()->json([
-                'message' =>
-                    $e->getMessage()
+                'success' => false,
+                'message' => $e->getMessage()
             ], 404);
         }
     }
@@ -104,41 +102,42 @@ class WarehouseController extends Controller
     /**
      * Update warehouse
      */
-    public function update(
-        Request $request,
-        string $id
-    ) {
+    public function update(Request $request, string $id)
+    {
         try {
+            $warehouse = Warehouse::findOrFail($id);
 
-            $warehouse =
-                Warehouse::findOrFail($id);
+            // Membaca payload request dengan aman
+            $input = $request->isJson() ? $request->json()->all() : $request->all();
 
-            $validated =
-                $request->validate([
-                    'name' =>
-                        'required|string|max:255',
+            $validated = Validator::make($input, [
+                'name'     => 'required|string|max:255',
+                'city'     => 'required|string|max:255',
+                'province' => 'required|string|max:255',
+                'address'  => 'nullable|string',
+                'capacity' => 'nullable|integer|min:0',
+                'status'   => 'nullable|string'
+            ])->validate();
 
-                    'location' =>
-                        'nullable|string'
-                ]);
-
-            $warehouse->update(
-                $validated
-            );
+            $warehouse->update($validated);
+            $warehouse->loadCount('shelves');
 
             return response()->json([
-                'message' =>
-                    'Warehouse updated',
-
-                'data' =>
-                    $warehouse
+                'success' => true,
+                'message' => 'Warehouse updated successfully',
+                'data'    => $warehouse
             ], 200);
 
-        } catch (\Exception $e) {
-
+        } catch (\Illuminate\Validation\ValidationException $v) {
             return response()->json([
-                'message' =>
-                    $e->getMessage()
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors'  => $v->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memperbarui: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -149,22 +148,18 @@ class WarehouseController extends Controller
     public function destroy(string $id)
     {
         try {
-
-            $warehouse =
-                Warehouse::findOrFail($id);
-
+            $warehouse = Warehouse::findOrFail($id);
             $warehouse->delete();
 
             return response()->json([
-                'message' =>
-                    'Warehouse deleted'
+                'success' => true,
+                'message' => 'Warehouse deleted'
             ], 200);
 
         } catch (\Exception $e) {
-
             return response()->json([
-                'message' =>
-                    $e->getMessage()
+                'success' => false,
+                'message' => $e->getMessage()
             ], 500);
         }
     }

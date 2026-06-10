@@ -346,4 +346,46 @@ class AttendanceController extends Controller
             ], 500);
         }
     }
+
+    // ==========================================
+    // TAMBAHAN METHOD RESOURCE UNTUK FIX ROUTING
+    // ==========================================
+
+    public function store(Request $request)
+    {
+        return $this->checkIn($request);
+    }
+
+    public function show($id)
+    {
+        if ($id === 'today') {
+            return $this->today(request());
+        }
+
+        $attendance = Attendance::with('employee.user')->find($id);
+        if (!$attendance) {
+            return response()->json(['message' => 'Data tidak ditemukan.'], 404);
+        }
+        return response()->json(['data' => $attendance], 200);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $attendance = Attendance::find($id);
+        if (!$attendance) {
+            return response()->json(['message' => 'Data tidak ditemukan.'], 404);
+        }
+        $attendance->update($request->all());
+        return response()->json(['message' => 'Berhasil diperbarui.', 'data' => $attendance], 200);
+    }
+
+    public function destroy($id)
+    {
+        $attendance = Attendance::find($id);
+        if (!$attendance) {
+            return response()->json(['message' => 'Data tidak ditemukan.'], 404);
+        }
+        $attendance->delete();
+        return response()->json(['message' => 'Berhasil dihapus.'], 200);
+    }
 }

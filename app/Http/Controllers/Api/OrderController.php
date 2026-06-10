@@ -15,83 +15,6 @@ use App\Services\DeliveryFeeService;
 
 class OrderController extends Controller
 {
-    /**
-     * 1. FUNGSI INDEX (UNTUK MENAMPILKAN DAFTAR PESANAN KE VUE)
-     */
-    public function index(Request $request)
-    {
-        try {
-            $query = Order::with(['user', 'items.medicine']);
-
-            if ($request->has('status') && $request->status != '') {
-                $query->where('status', $request->status);
-            }
-
-            if ($request->has('payment_method') && $request->payment_method != '') {
-                $query->where('payment_method', $request->payment_method);
-            }
-
-            if ($request->has('start_date') && $request->has('end_date')) {
-                $query->whereBetween('created_at', [
-                    $request->start_date . ' 00:00:00',
-                    $request->end_date . ' 23:59:59'
-                ]);
-            }
-
-            if ($request->has('search') && $request->search != '') {
-                $query->where('order_number', 'like', '%' . $request->search . '%')
-                      ->orWhereHas('user', function($q) use ($request) {
-                          $q->where('name', 'like', '%' . $request->search . '%');
-                      });
-            }
-
-            $orders = $query->latest()->paginate($request->per_page ?? 100);
-
-            return response()->json([
-                'success' => true,
-                'data' => $orders
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * 2. FUNGSI UPDATE (UNTUK MENGUBAH STATUS: DIPROSES, DIKIRIM, SELESAI)
-     */
-    public function update(Request $request, $id)
-    {
-        try {
-            $order = Order::findOrFail($id);
-            
-            $request->validate([
-                'status' => 'required|string'
-            ]);
-
-            $order->update([
-                'status' => $request->status
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Status pesanan berhasil diupdate',
-                'data' => $order
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * 3. FUNGSI STORE (KODE ASLI KING UNTUK MEMBUAT PESANAN)
-     */
     public function store(Request $request)
     {
         DB::beginTransaction();
@@ -99,97 +22,281 @@ class OrderController extends Controller
         try {
 
             $validated = $request->validate([
-                'customer_id' => 'nullable|exists:users,id',
-                'customer_name' => 'required|string',
-                'customer_phone' => 'required|string',
-                'delivery_address' => 'required|string',
-                'delivery_latitude' => 'required|numeric',
-                'delivery_longitude' => 'required|numeric',
-                'delivery_city' => 'nullable|string',
-                'notes' => 'nullable|string',
-                'shipping_method' => 'required|in:cod,online_payment',
-                'items' => 'required|array|min:1',
-                'items.*.medicine_id' => 'required|exists:medicines,id',
-                'items.*.quantity' => 'required|integer|min:1',
+
+                'customer_id' =>
+                    'nullable|exists:users,id',
+
+                'customer_name' =>
+                    'required|string',
+
+                'customer_phone' =>
+                    'required|string',
+
+                'delivery_address' =>
+                    'required|string',
+
+                'delivery_latitude' =>
+                    'required|numeric',
+
+                'delivery_longitude' =>
+                    'required|numeric',
+
+                'delivery_city' =>
+                    'nullable|string',
+
+                'notes' =>
+                    'nullable|string',
+
+                'shipping_method' =>
+                    'required|in:cod,online_payment',
+
+                'items' =>
+                    'required|array|min:1',
+
+                'items.*.medicine_id' =>
+                    'required|exists:medicines,id',
+
+                'items.*.quantity' =>
+                    'required|integer|min:1',
+
             ]);
 
-            // APOTEK LOCATION
+            /*
+            |--------------------------------------------------------------------------
+            | APOTEK LOCATION
+            |--------------------------------------------------------------------------
+            */
+
             $pharmacyLat = -6.2088;
             $pharmacyLng = 106.8456;
 
-            // DISTANCE
-            $distance = DistanceHelper::calculate(
-                $pharmacyLat,
-                $pharmacyLng,
-                $validated['delivery_latitude'],
-                $validated['delivery_longitude']
-            );
+            /*
+            |--------------------------------------------------------------------------
+            | DISTANCE
+            |--------------------------------------------------------------------------
+            */
 
-            // MAX DISTANCE
+            $distance =
+                DistanceHelper::calculate(
+                    $pharmacyLat,
+                    $pharmacyLng,
+                    $validated[
+                        'delivery_latitude'
+                    ],
+                    $validated[
+                        'delivery_longitude'
+                    ]
+                );
+
+            /*
+            |--------------------------------------------------------------------------
+            | MAX DISTANCE
+            |--------------------------------------------------------------------------
+            */
+
             if ($distance > 10) {
+
                 return response()->json([
-                    'message' => 'Lokasi terlalu jauh. Maksimal pengiriman 10 km'
+
+                    'message' =>
+                        'Lokasi terlalu jauh. Maksimal pengiriman 10 km'
+
                 ], 422);
             }
 
-            // SHIPPING COST
-            $shippingCost = DeliveryFeeService::calculate($distance);
+            /*
+            |--------------------------------------------------------------------------
+            | SHIPPING COST
+            |--------------------------------------------------------------------------
+            */
 
-            // SUBTOTAL
+            $shippingCost =
+                DeliveryFeeService::calculate(
+                    $distance
+                );
+
+            /*
+            |--------------------------------------------------------------------------
+            | SUBTOTAL
+            |--------------------------------------------------------------------------
+            */
+
             $subtotal = 0;
-            foreach ($validated['items'] as $item) {
-                $medicine = Medicine::findOrFail($item['medicine_id']);
-                $subtotal += $medicine->selling_price * $item['quantity'];
+
+            foreach (
+                $validated['items']
+                as $item
+            ) {
+
+                $medicine =
+                    Medicine::findOrFail(
+                        $item[
+                            'medicine_id'
+                        ]
+                    );
+
+                $subtotal +=
+                    $medicine->selling_price
+                    *
+                    $item['quantity'];
             }
 
-            // TOTAL
-            $total = $subtotal + $shippingCost;
+            /*
+            |--------------------------------------------------------------------------
+            | TOTAL
+            |--------------------------------------------------------------------------
+            */
 
-            // CREATE ORDER
+            $total =
+                $subtotal
+                +
+                $shippingCost;
+
+            /*
+            |--------------------------------------------------------------------------
+            | CREATE ORDER
+            |--------------------------------------------------------------------------
+            */
+
             $order = Order::create([
-                'order_number' => 'ORD-' . now()->format('Ymd') . '-' . strtoupper(Str::random(5)),
-                'customer_id' => $validated['customer_id'] ?? 1,
-                'subtotal' => $subtotal,
-                'shipping_cost' => $shippingCost,
-                'delivery_distance_km' => $distance,
-                'discount_amount' => 0,
-                'total_amount' => $total,
-                'status' => 'pending',
-                'shipping_method' => $validated['shipping_method'],
-                'delivery_address' => $validated['delivery_address'],
-                'delivery_latitude' => $validated['delivery_latitude'],
-                'delivery_longitude' => $validated['delivery_longitude'],
-                'delivery_city' => $validated['delivery_city'] ?? null,
-                'notes' => $validated['notes'] ?? null,
+
+                'order_number' =>
+                    'ORD-' .
+                    now()->format('Ymd')
+                    . '-'
+                    . strtoupper(
+                        Str::random(5)
+                    ),
+
+                'customer_id' =>
+                    $validated[
+                        'customer_id'
+                    ] ?? 1,
+
+                'subtotal' =>
+                    $subtotal,
+
+                'shipping_cost' =>
+                    $shippingCost,
+
+                'delivery_distance_km' =>
+                    $distance,
+
+                'discount_amount' =>
+                    0,
+
+                'total_amount' =>
+                    $total,
+
+                'status' =>
+                    'pending',
+
+                'shipping_method' =>
+                    $validated[
+                        'shipping_method'
+                    ],
+
+                'delivery_address' =>
+                    $validated[
+                        'delivery_address'
+                    ],
+
+                'delivery_latitude' =>
+                    $validated[
+                        'delivery_latitude'
+                    ],
+
+                'delivery_longitude' =>
+                    $validated[
+                        'delivery_longitude'
+                    ],
+
+                'delivery_city' =>
+                    $validated[
+                        'delivery_city'
+                    ] ?? null,
+
+                'notes' =>
+                    $validated[
+                        'notes'
+                    ] ?? null,
             ]);
 
-            // ORDER ITEMS
-            foreach ($validated['items'] as $item) {
-                $medicine = Medicine::findOrFail($item['medicine_id']);
+            /*
+            |--------------------------------------------------------------------------
+            | ORDER ITEMS
+            |--------------------------------------------------------------------------
+            */
+
+            foreach (
+                $validated['items']
+                as $item
+            ) {
+
+                $medicine =
+                    Medicine::findOrFail(
+                        $item[
+                            'medicine_id'
+                        ]
+                    );
 
                 OrderItem::create([
-                    'order_id' => $order->id,
-                    'medicine_id' => $medicine->id,
-                    'quantity' => $item['quantity'],
-                    'price' => $medicine->selling_price,
-                    'subtotal' => $medicine->selling_price * $item['quantity'],
+
+                    'order_id' =>
+                        $order->id,
+
+                    'medicine_id' =>
+                        $medicine->id,
+
+                    'quantity' =>
+                        $item[
+                            'quantity'
+                        ],
+
+                    'price' =>
+                        $medicine
+                        ->selling_price,
+
+                    'subtotal' =>
+                        $medicine
+                        ->selling_price
+                        *
+                        $item[
+                            'quantity'
+                        ],
                 ]);
             }
 
             DB::commit();
 
             return response()->json([
-                'message' => 'Order berhasil dibuat',
-                'order' => $order,
-                'distance_km' => $distance,
-                'shipping_cost' => $shippingCost,
-                'total' => $total
+
+                'message' =>
+                    'Order berhasil dibuat',
+
+                'order' =>
+                    $order,
+
+                'distance_km' =>
+                    $distance,
+
+                'shipping_cost' =>
+                    $shippingCost,
+
+                'total' =>
+                    $total
+
             ], 201);
 
         } catch (\Exception $e) {
+
             DB::rollBack();
+
             return response()->json([
-                'message' => $e->getMessage()
+
+                'message' =>
+                    $e->getMessage()
+
             ], 500);
         }
     }

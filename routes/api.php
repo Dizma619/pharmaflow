@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\Api\AnalyticsController;
+
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
@@ -19,9 +19,6 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\CashflowController;
-use App\Http\Controllers\Api\CashflowController as ApiCashflowController;
-use App\Http\Controllers\Api\CashflowController as ControllersApiCashflowController;
-use App\Http\Controllers\Api\CashflowController as HttpControllersApiCashflowController;
 use App\Http\Controllers\Api\StockMonitoringController;
 
 Route::prefix('v1')->group(function () {
@@ -39,32 +36,7 @@ Route::prefix('v1')->group(function () {
     Route::get('medicines', [MedicineController::class, 'index']);
     Route::get('medicines/{id}', [MedicineController::class, 'show']);
     Route::get('categories', [CategoryController::class, 'index']);
-    Route::post('/categories', [CategoryController::class, 'store']);
-    Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
     Route::get('promotions', [PromotionController::class, 'index']);
-// 📦 Manajemen Stok Dasar
-    Route::get('/stocks', [StockController::class, 'index']);
-    Route::get('/stocks/{id}', [StockController::class, 'show']);
-    Route::post('/stocks', [StockController::class, 'store']);     // Untuk tombol Tambah Stok
-    Route::delete('/stocks/{id}', [StockController::class, 'destroy']); // Untuk tombol Hapus
-
-    // 🚀 Fitur Lanjutan (Sesuai Controller King)
-    Route::post('/stocks/adjustment', [StockController::class, 'adjustment']);
-    Route::post('/stocks/opname', [StockController::class, 'opname']);
-    
-    // ⚠️ Filter Stok (Peringatan & Kedaluwarsa)
-    Route::get('/stocks-filter/low-stock', [StockController::class, 'lowStock']);
-    Route::get('/stocks-filter/expired', [StockController::class, 'expired']);
-    Route::get('/stocks-filter/expiring-soon', [StockController::class, 'expiringSoon']);
-    Route::get('/suppliers', [\App\Http\Controllers\Api\SupplierController::class, 'index']);
-    Route::post('/suppliers', [\App\Http\Controllers\Api\SupplierController::class, 'store']);
-    Route::delete('/suppliers/{id}', [\App\Http\Controllers\Api\SupplierController::class, 'destroy']);
-    Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'index']);
-    Route::get('/notifications/stats', [\App\Http\Controllers\Api\NotificationController::class, 'stats']);
-    Route::put('/notifications/{id}/read', [\App\Http\Controllers\Api\NotificationController::class, 'markAsRead']);
-    Route::put('/notifications/mark-all-read', [\App\Http\Controllers\Api\NotificationController::class, 'markAllAsRead']);
-});
 
     // ================================================
     // GUEST CHECKOUT - PUBLIC
@@ -238,7 +210,7 @@ Route::prefix('v1')->group(function () {
                 [MedicineController::class, 'searchByCode']
             );
 
-            // ATTENDANCE
+            // ATTENDANCE (FIXED: Route 'today' & 'monthly-report' ditaruh di atas apiResource)
             Route::post(
                 'attendance/check-in',
                 [AttendanceController::class, 'checkIn']
@@ -249,11 +221,6 @@ Route::prefix('v1')->group(function () {
                 [AttendanceController::class, 'checkOut']
             );
 
-            Route::apiResource(
-                'attendance',
-                AttendanceController::class
-            );
-
             Route::get(
                 'attendance/today',
                 [AttendanceController::class, 'today']
@@ -262,6 +229,11 @@ Route::prefix('v1')->group(function () {
             Route::get(
                 'attendance/monthly-report',
                 [AttendanceController::class, 'monthlyReport']
+            );
+
+            Route::apiResource(
+                'attendance',
+                AttendanceController::class
             );
 
             // MASTER DATA
@@ -294,6 +266,11 @@ Route::prefix('v1')->group(function () {
             Route::get(
                 'stocks',
                 [StockController::class, 'index']
+            );
+
+            Route::post(
+                'stocks', // <--- FIXED: Route POST untuk input stok baru sudah ditambahkan di sini
+                [StockController::class, 'store']
             );
 
             Route::get(
@@ -375,8 +352,6 @@ Route::prefix('v1')->group(function () {
                 VoucherController::class
             );
 
-            // FIXED: Duplikasi dashboard/summary di grup ini sudah dihapus
-
             Route::get(
                 'reports/sales',
                 [DashboardController::class, 'salesReport']
@@ -444,35 +419,12 @@ Route::prefix('v1')->group(function () {
         // ============================================
 
         Route::middleware('role:owner')->group(function () {
-
-        // ============================================
-            // ORDERS (AKSES UNTUK OWNER)
-            // ============================================
-            Route::get(
-                'orders',
-                [OrderController::class, 'index']
-            );
-
-            Route::get(
-                'orders/{id}',
-                [OrderController::class, 'show']
-            );
-
-            Route::put(
-                'orders/{id}',
-                [OrderController::class, 'update']
-            );
             
-            // FIXED: Duplikasi dashboard/summary di grup ini sudah dihapus
-
             Route::get(
                 'dashboard/analytics',
                 [DashboardController::class, 'analytics']
             );
 
-            /**
-             * PART 4.4 — OWNER DASHBOARD PRO
-             */
             Route::get(
                 'dashboard/kpi',
                 [DashboardController::class, 'kpi']
@@ -497,7 +449,6 @@ Route::prefix('v1')->group(function () {
                 'dashboard/analytics-owner',
                 [DashboardController::class, 'analyticsOwner']
             );
-            Route::get('analytics/summary', [AnalyticsController::class, 'getSummary']);
 
             // REPORTS
             Route::get(

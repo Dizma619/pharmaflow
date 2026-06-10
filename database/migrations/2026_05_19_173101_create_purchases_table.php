@@ -6,25 +6,30 @@ use Illuminate\Support\Facades\Schema;
 
 class CreatePurchasesTable extends Migration
 {
-    public function up(): void
-{
-    Schema::create('purchases', function (Blueprint $table) {
-        $table->id();
-        // INI 2 KOLOM YANG BIKIN ERROR KEMARIN KITA TAMBAHKAN DI SINI:
-        $table->string('purchase_number')->unique();
-        $table->string('po_number')->nullable(); 
-        
-        $table->foreignId('supplier_id')->constrained('suppliers')->onDelete('cascade');
-        $table->string('status')->default('pending');
-        $table->decimal('total_amount', 15, 2)->default(0);
-        $table->text('notes')->nullable();
-        $table->integer('items_total')->default(0);
-        $table->integer('items_received')->nullable()->default(0);
-        $table->timestamp('received_at')->nullable();
-        $table->foreignId('received_by')->nullable()->constrained('users')->onDelete('set null');
-        $table->timestamps();
-    });
-}
+    public function up()
+    {
+        Schema::create('purchases', function (Blueprint $table) {
+            $table->id();
+            $table->string('po_number')->unique();
+            $table->unsignedBigInteger('supplier_id');
+            $table->decimal('subtotal', 15, 2);
+            $table->decimal('tax_amount', 15, 2)->default(0);
+            $table->decimal('shipping_cost', 15, 2)->default(0);
+            $table->decimal('total_amount', 15, 2);
+            $table->enum('status', ['draft', 'confirmed', 'received', 'invoiced', 'paid'])->default('draft');
+            $table->date('purchase_date');
+            $table->date('expected_delivery_date')->nullable();
+            $table->date('received_date')->nullable();
+            $table->text('notes')->nullable();
+            $table->timestamps();
+            $table->integer('items_received')->default(0);
+            $table->integer('items_total')->default(0);
+            $table->dateTime('received_at')->nullable();
+            $table->foreignId('received_by')->nullable()->constrained('users');
+            
+            $table->foreign('supplier_id')->references('id')->on('suppliers')->onDelete('cascade');
+        });
+    }
 
     public function down()
     {
