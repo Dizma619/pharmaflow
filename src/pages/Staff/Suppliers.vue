@@ -10,7 +10,6 @@
       </button>
     </div>
 
-    <!-- Search & Filter -->
     <div class="bg-white rounded-lg shadow-md p-4 grid grid-cols-4 gap-4">
       <div>
         <label class="block text-sm font-semibold mb-2">Cari Supplier</label>
@@ -57,18 +56,15 @@
       </div>
     </div>
 
-    <!-- Loading -->
     <div v-if="loading" class="text-center py-8">
       <p class="text-lg text-gray-600">⏳ Memuat supplier...</p>
     </div>
 
-    <!-- Empty State -->
-    <div v-else-if="suppliers.length === 0" class="text-center py-12 bg-white rounded-lg shadow-md">
+    <div v-else-if="!suppliers || suppliers.length === 0" class="text-center py-12 bg-white rounded-lg shadow-md">
       <p class="text-4xl mb-4">📭</p>
       <p class="text-xl text-gray-600">Belum ada supplier</p>
     </div>
 
-    <!-- Table -->
     <div v-else class="bg-white rounded-lg shadow-md overflow-hidden">
       <table class="w-full">
         <thead class="bg-gray-200">
@@ -83,33 +79,33 @@
           </tr>
         </thead>
         <tbody class="divide-y">
-          <tr v-for="supplier in suppliers" :key="supplier.id" class="hover:bg-gray-50 transition">
+          <tr v-for="supplier in suppliers" :key="supplier?.id" class="hover:bg-gray-50 transition">
             <td class="px-6 py-4">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold">
-                  {{ supplier.name.charAt(0).toUpperCase() }}
+                  {{ supplier?.name ? supplier.name.charAt(0).toUpperCase() : '?' }}
                 </div>
-                <p class="font-semibold">{{ supplier.name }}</p>
+                <p class="font-semibold">{{ supplier?.name }}</p>
               </div>
             </td>
             <td class="px-6 py-4">
-              <p class="font-semibold text-sm">{{ supplier.contact_person }}</p>
+              <p class="font-semibold text-sm">{{ supplier?.contact_person }}</p>
               <p class="text-xs text-gray-600">👤 Contact</p>
             </td>
-            <td class="px-6 py-4 text-sm">{{ supplier.email || '—' }}</td>
-            <td class="px-6 py-4 text-sm font-semibold">{{ supplier.phone }}</td>
+            <td class="px-6 py-4 text-sm">{{ supplier?.email || '—' }}</td>
+            <td class="px-6 py-4 text-sm font-semibold">{{ supplier?.phone }}</td>
             <td class="px-6 py-4">
               <div class="text-sm">
-                <p class="font-semibold">{{ supplier.city }}</p>
-                <p class="text-xs text-gray-600">{{ supplier.province }}</p>
+                <p class="font-semibold">{{ supplier?.city }}</p>
+                <p class="text-xs text-gray-600">{{ supplier?.province }}</p>
               </div>
             </td>
             <td class="px-6 py-4 text-center">
               <span :class="[
                 'px-3 py-1 rounded-full font-semibold text-white text-sm',
-                supplier.status === 'aktif' ? 'bg-green-500' : 'bg-red-500'
+                supplier?.status === 'aktif' ? 'bg-green-500' : 'bg-red-500'
               ]">
-                {{ supplier.status === 'aktif' ? '✅ Aktif' : '❌ Tidak Aktif' }}
+                {{ supplier?.status === 'aktif' ? '✅ Aktif' : '❌ Tidak Aktif' }}
               </span>
             </td>
             <td class="px-6 py-4 text-center">
@@ -139,84 +135,75 @@
       </table>
     </div>
 
-    <!-- Detail Modal -->
     <div v-if="selectedSupplier" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-lg shadow-lg p-8 max-w-2xl w-full max-h-96 overflow-y-auto">
+      <div class="bg-white rounded-lg shadow-lg p-8 max-w-2xl w-full max-h-[85vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold">📋 Detail Supplier</h2>
           <button
             @click="selectedSupplier = null"
             class="text-gray-600 hover:text-gray-800 font-bold text-2xl"
           >
-            ×
+            &times;
           </button>
         </div>
 
-        <!-- Header -->
         <div class="grid grid-cols-2 gap-4 mb-6 pb-6 border-b">
           <div>
             <p class="text-sm text-gray-600 font-semibold">Nama Supplier</p>
-            <p class="text-lg font-bold">{{ selectedSupplier.name }}</p>
+            <p class="text-lg font-bold">{{ selectedSupplier?.name }}</p>
           </div>
           <div>
             <p class="text-sm text-gray-600 font-semibold">Status</p>
-            <p :class="selectedSupplier.status === 'aktif' ? 'text-green-600' : 'text-red-600'" class="text-lg font-bold">
-              {{ selectedSupplier.status === 'aktif' ? '✅ Aktif' : '❌ Tidak Aktif' }}
+            <p :class="selectedSupplier?.status === 'aktif' ? 'text-green-600' : 'text-red-600'" class="text-lg font-bold">
+              {{ selectedSupplier?.status === 'aktif' ? '✅ Aktif' : '❌ Tidak Aktif' }}
             </p>
           </div>
         </div>
 
-        <!-- Contact Info -->
         <div class="space-y-4 mb-6">
           <h3 class="font-bold text-lg">👤 Informasi Kontak</h3>
-
           <div class="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
             <div>
               <p class="text-sm text-gray-600">Kontak Person</p>
-              <p class="font-bold">{{ selectedSupplier.contact_person }}</p>
+              <p class="font-bold">{{ selectedSupplier?.contact_person }}</p>
             </div>
             <div>
               <p class="text-sm text-gray-600">Email</p>
-              <p class="font-bold">{{ selectedSupplier.email || '—' }}</p>
+              <p class="font-bold">{{ selectedSupplier?.email || '—' }}</p>
             </div>
             <div>
               <p class="text-sm text-gray-600">Telepon</p>
-              <p class="font-bold">{{ selectedSupplier.phone }}</p>
+              <p class="font-bold">{{ selectedSupplier?.phone }}</p>
             </div>
           </div>
         </div>
 
-        <!-- Address Info -->
         <div class="space-y-4 mb-6">
           <h3 class="font-bold text-lg">📍 Alamat</h3>
-
           <div class="p-4 bg-gray-50 rounded-lg space-y-2">
-            <p class="font-bold">{{ selectedSupplier.address }}</p>
-            <p class="text-sm">{{ selectedSupplier.city }}, {{ selectedSupplier.province }} {{ selectedSupplier.postal_code }}</p>
+            <p class="font-bold">{{ selectedSupplier?.address }}</p>
+            <p class="text-sm">{{ selectedSupplier?.city }}, {{ selectedSupplier?.province }} {{ selectedSupplier?.postal_code }}</p>
           </div>
         </div>
 
-        <!-- Bank Info -->
-        <div v-if="selectedSupplier.bank_name" class="space-y-4 mb-6">
+        <div v-if="selectedSupplier?.bank_name" class="space-y-4 mb-6">
           <h3 class="font-bold text-lg">🏦 Informasi Bank</h3>
-
           <div class="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
             <div>
               <p class="text-sm text-gray-600">Bank</p>
-              <p class="font-bold">{{ selectedSupplier.bank_name }}</p>
+              <p class="font-bold">{{ selectedSupplier?.bank_name }}</p>
             </div>
             <div>
               <p class="text-sm text-gray-600">No. Rekening</p>
-              <p class="font-bold">{{ selectedSupplier.bank_account }}</p>
+              <p class="font-bold">{{ selectedSupplier?.bank_account }}</p>
             </div>
             <div class="col-span-2">
               <p class="text-sm text-gray-600">Syarat Pembayaran</p>
-              <p class="font-bold">{{ selectedSupplier.payment_terms }}</p>
+              <p class="font-bold">{{ selectedSupplier?.payment_terms }}</p>
             </div>
           </div>
         </div>
 
-        <!-- Close Button -->
         <button
           @click="selectedSupplier = null"
           class="w-full px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition font-semibold"
@@ -226,21 +213,19 @@
       </div>
     </div>
 
-    <!-- Form Modal -->
     <div v-if="showForm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-lg shadow-lg p-8 max-w-2xl w-full max-h-96 overflow-y-auto">
+      <div class="bg-white rounded-lg shadow-lg p-8 max-w-2xl w-full max-h-[85vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold">{{ editingId ? '✏️ Edit Supplier' : '➕ Tambah Supplier' }}</h2>
           <button
             @click="showForm = false"
             class="text-gray-600 hover:text-gray-800 font-bold text-2xl"
           >
-            ×
+            &times;
           </button>
         </div>
 
         <form @submit.prevent="saveSupplier" class="space-y-4">
-          <!-- Name & Contact Person -->
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-gray-700 font-semibold mb-2">Nama Supplier *</label>
@@ -263,7 +248,6 @@
             </div>
           </div>
 
-          <!-- Email & Phone -->
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-gray-700 font-semibold mb-2">Email</label>
@@ -285,7 +269,6 @@
             </div>
           </div>
 
-          <!-- Address -->
           <div>
             <label class="block text-gray-700 font-semibold mb-2">Alamat</label>
             <textarea
@@ -294,7 +277,6 @@
             ></textarea>
           </div>
 
-          <!-- City, Province, Postal Code -->
           <div class="grid grid-cols-3 gap-4">
             <div>
               <label class="block text-gray-700 font-semibold mb-2">Kota</label>
@@ -324,7 +306,6 @@
             </div>
           </div>
 
-          <!-- Bank Info -->
           <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
             <h3 class="font-bold mb-3">🏦 Informasi Bank</h3>
 
@@ -359,7 +340,6 @@
             </div>
           </div>
 
-          <!-- Status -->
           <div>
             <label class="flex items-center gap-2 cursor-pointer">
               <input
@@ -373,7 +353,6 @@
             </label>
           </div>
 
-          <!-- Action Buttons -->
           <div class="flex gap-2 pt-4">
             <button
               type="submit"
@@ -426,6 +405,19 @@ const form = ref({
   status: 'aktif',
 })
 
+// Ekstraktor Data Array Pintar anti-crash struktur bersarang Laravel
+const extractDataArray = (response) => {
+  if (!response || !response.data) return []
+  if (Array.isArray(response.data.data)) return response.data.data
+  if (Array.isArray(response.data)) return response.data
+  
+  const keys = Object.keys(response.data)
+  for (const key of keys) {
+    if (Array.isArray(response.data[key])) return response.data[key]
+  }
+  return []
+}
+
 const fetchSuppliers = async () => {
   loading.value = true
   try {
@@ -435,9 +427,10 @@ const fetchSuppliers = async () => {
     if (filterStatus.value) params.status = filterStatus.value
 
     const response = await api.get('suppliers', { params })
-    suppliers.value = response.data.data.data || []
+    suppliers.value = extractDataArray(response)
   } catch (error) {
     ElMessage.error('Gagal memuat supplier')
+    console.error(error)
   } finally {
     loading.value = false
   }

@@ -442,66 +442,31 @@ const router = createRouter({
 // ========================================
 // NAVIGATION GUARD
 // ========================================
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
+  // --- MATIKAN SEMENTARA SATPAM LOGIN UNTUK DEVELOPMENT ---
+  return true; 
+  
+  /* --- KODE ASLINYA KITA KOMENTARI DULU BIAR GAK HILANG ---
   const authStore = useAuthStore()
 
-  if (to.meta.requiresAuth) {
-    if (!authStore.isAuthenticated) {
-      next({
-        name: 'Login',
-        query: {
-          redirect: to.fullPath,
-        },
-      })
-      return
-    }
-
-    if (to.meta.role) {
-      const allowedRoles =
-        Array.isArray(to.meta.role)
-          ? to.meta.role
-          : [to.meta.role]
-
-      if (
-        allowedRoles.includes(
-          authStore.user?.role
-        )
-      ) {
-        next()
-        return
-      }
-
-      // Redirect by role
-      switch (authStore.user?.role) {
-        case 'staff':
-          next({
-            name: 'StaffDashboard',
-          })
-          break
-
-        case 'owner':
-          next({
-            name: 'OwnerDashboard',
-          })
-          break
-
-        case 'customer':
-          next({
-            name: 'Home',
-          })
-          break
-
-        default:
-          next({
-            name: 'Login',
-          })
-      }
-
-      return
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    return {
+      name: 'Login',
+      query: { redirect: to.fullPath },
     }
   }
 
-  next()
-})
+  if (to.meta.role) {
+    const allowedRoles = Array.isArray(to.meta.role)
+      ? to.meta.role
+      : [to.meta.role]
 
-export default router
+    if (!allowedRoles.includes(authStore.user?.role)) {
+      return false 
+    }
+  }
+
+  return true
+  --------------------------------------------------------- */
+})
+export default router 

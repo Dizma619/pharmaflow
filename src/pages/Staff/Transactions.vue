@@ -2,7 +2,6 @@
   <div class="space-y-6">
     <h1 class="text-4xl font-bold">💰 Riwayat Transaksi</h1>
 
-    <!-- Filter -->
     <div class="bg-white rounded-lg shadow-md p-4 grid grid-cols-4 gap-4">
       <div>
         <label class="block text-sm font-semibold mb-2">Status</label>
@@ -48,11 +47,10 @@
       </div>
     </div>
 
-    <!-- Summary Cards -->
     <div v-if="!loading" class="grid grid-cols-4 gap-6">
       <div class="bg-gradient-to-br from-green-50 to-green-100 border-l-4 border-green-600 rounded-lg shadow-md p-6">
         <p class="text-gray-600 text-sm font-semibold mb-2">Total Transaksi</p>
-        <p class="text-3xl font-bold text-green-600">{{ summary.transaction_count }}</p>
+        <p class="text-3xl font-bold text-green-600">{{ summary.transaction_count || 0 }}</p>
         <p class="text-xs text-gray-600 mt-1">transaksi</p>
       </div>
 
@@ -72,12 +70,10 @@
       </div>
     </div>
 
-    <!-- Loading -->
     <div v-if="loading" class="text-center py-8">
       <p class="text-lg text-gray-600">⏳ Memuat transaksi...</p>
     </div>
 
-    <!-- Table -->
     <div v-else class="bg-white rounded-lg shadow-md overflow-hidden">
       <table class="w-full">
         <thead class="bg-gray-200">
@@ -117,9 +113,12 @@
           </tr>
         </tbody>
       </table>
+      
+      <div v-if="transactions.length === 0" class="text-center py-8 text-gray-500">
+        Belum ada data transaksi.
+      </div>
     </div>
 
-    <!-- Detail Modal -->
     <div v-if="selectedTransaction" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div class="bg-white rounded-lg shadow-lg p-8 max-w-2xl w-full max-h-96 overflow-y-auto">
         <div class="flex justify-between items-center mb-6">
@@ -132,7 +131,6 @@
           </button>
         </div>
 
-        <!-- Header Info -->
         <div class="grid grid-cols-2 gap-4 mb-6 pb-4 border-b">
           <div>
             <p class="text-sm text-gray-600">No. Referensi</p>
@@ -154,18 +152,16 @@
           </div>
         </div>
 
-        <!-- Items -->
         <div class="mb-6">
           <h3 class="font-bold mb-3">Produk:</h3>
           <div class="space-y-2">
             <div v-for="item in selectedTransaction.items" :key="item.id" class="flex justify-between">
-              <span>{{ item.medicine.name }} x{{ item.quantity }}</span>
+              <span>{{ item.medicine?.name || 'Obat' }} x{{ item.quantity }}</span>
               <span>Rp{{ formatPrice(item.subtotal) }}</span>
             </div>
           </div>
         </div>
 
-        <!-- Totals -->
         <div class="border-t pt-4 space-y-2">
           <div class="flex justify-between">
             <span>Subtotal</span>
@@ -181,7 +177,6 @@
           </div>
         </div>
 
-        <!-- Close Button -->
         <button
           @click="selectedTransaction = null"
           class="w-full mt-6 px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition font-semibold"
@@ -212,8 +207,11 @@ const summary = ref({
   average_transaction: 0,
 })
 
+// PERBAIKAN 1: Mencegah error "RpNaN"
 const formatPrice = (price) => {
-  return new Intl.NumberFormat('id-ID').format(price)
+  // Pastikan nilai dikonversi ke Number, jika kosong (undefined/null) otomatis jadi 0
+  const validPrice = Number(price) || 0;
+  return new Intl.NumberFormat('id-ID').format(validPrice)
 }
 
 const formatDate = (date) => {
@@ -233,10 +231,38 @@ const fetchTransactions = async () => {
     if (searchQuery.value) params.search = searchQuery.value
 
     const response = await api.get('transactions', { params })
-    transactions.value = response.data.data.data || []
-    summary.value = response.data.summary || {}
+    
+    // PERBAIKAN 2: Log data untuk mengecek bentuk data asli dari backend (lihat di tab Console F12)
+    console.log('Data lengkap dari Backend:', response.data)
+
+    // PERBAIKAN 3: Membaca array data dengan aman (menghindari error property undefined)
+    const backendData = response.data
+    
+    if (backendData.data && Array.isArray(backendData.data.data)) {
+        // Jika response dibungkus dua kali (biasanya default Laravel Pagination)
+        transactions.value = backendData.data.data
+    } else if (backendData.data && Array.isArray(backendData.data)) {
+        // Jika response hanya dibungkus sekali
+        transactions.value = backendData.data
+    } else if (Array.isArray(backendData)) {
+        // Jika response langsung berupa array murni
+        transactions.value = backendData
+    } else {
+        // Jika tidak ada data yang cocok
+        transactions.value = []
+    }
+
+    // PERBAIKAN 4: Menangani objek summary jika tidak dikirimkan oleh backend (misal kena error 403)
+    summary.value = response.data.summary || {
+      transaction_count: 0,
+      total_sales: 0,
+      total_discount: 0,
+      average_transaction: 0,
+    }
+
   } catch (error) {
     ElMessage.error('Gagal memuat transaksi')
+    console.error("Detail Error API:", error)
   } finally {
     loading.value = false
   }

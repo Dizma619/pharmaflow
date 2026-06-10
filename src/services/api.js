@@ -1,33 +1,26 @@
 import axios from 'axios'
-import { useAuthStore } from '@/stores/auth'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1',
+  // ✅ SUDAH FIX: Ditambahkan slash '/' di akhir v1 agar tidak v1suppliers lagi
+  baseURL: 'http://127.0.0.1:8000/api/v1/',
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
   },
 })
 
-// ================================
 // REQUEST INTERCEPTOR
-// Tambahkan token otomatis
-// ================================
 api.interceptors.request.use(
   (config) => {
-    try {
-      const authStore = useAuthStore()
+    console.log(
+      'API REQUEST:',
+      config.baseURL + config.url
+    )
 
-      // Ambil token dari pinia atau localStorage
-      const token =
-        authStore.token ||
-        localStorage.getItem('token')
+    const token = localStorage.getItem('token')
 
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`
-      }
-    } catch (error) {
-      console.error('Auth Store Error:', error)
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
     }
 
     return config
@@ -35,23 +28,22 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// ================================
 // RESPONSE INTERCEPTOR
-// Handle token expired / unauthorized
-// ================================
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      try {
-        const authStore = useAuthStore()
+    const status = error.response?.status
 
-        authStore.logout()
-      } catch (e) {
-        console.error('Logout error:', e)
-      }
+    // Kalau token expired / unauthorized
+    if (status === 401) {
+      console.warn('Session expired. Auto logout...')
 
-      // redirect ke login
+      // Hapus data login
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      localStorage.removeItem('role')
+
+      // Redirect ke login
       window.location.href = '/login'
     }
 

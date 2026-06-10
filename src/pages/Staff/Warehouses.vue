@@ -10,7 +10,6 @@
       </button>
     </div>
 
-    <!-- Search & Filter -->
     <div class="bg-white rounded-lg shadow-md p-4">
       <input
         v-model="searchQuery"
@@ -21,12 +20,10 @@
       />
     </div>
 
-    <!-- Loading -->
     <div v-if="loading" class="text-center py-8">
       <p class="text-lg text-gray-600">⏳ Memuat gudang...</p>
     </div>
 
-    <!-- Table -->
     <div v-else class="bg-white rounded-lg shadow-md overflow-hidden">
       <table class="w-full">
         <thead class="bg-gray-200">
@@ -43,7 +40,7 @@
           <tr v-for="warehouse in warehouses" :key="warehouse.id" class="hover:bg-gray-50">
             <td class="px-6 py-4 font-semibold">{{ warehouse.name }}</td>
             <td class="px-6 py-4">
-              <p class="text-sm">{{ warehouse.address }}</p>
+              <p class="text-sm">{{ warehouse.address || '-' }}</p>
               <p class="text-xs text-gray-600">{{ warehouse.city }}, {{ warehouse.province }}</p>
             </td>
             <td class="px-6 py-4">{{ warehouse.capacity || '-' }}</td>
@@ -55,9 +52,9 @@
             <td class="px-6 py-4 text-center">
               <span :class="[
                 'px-3 py-1 rounded-full font-semibold text-white text-sm',
-                warehouse.status === 'aktif' ? 'bg-green-500' : 'bg-red-500'
+                (warehouse.status === 'aktif' || warehouse.status === 'active') ? 'bg-green-500' : 'bg-red-500'
               ]">
-                {{ warehouse.status === 'aktif' ? '✅ Aktif' : '❌ Tidak Aktif' }}
+                {{ (warehouse.status === 'aktif' || warehouse.status === 'active') ? '✅ Aktif' : '❌ Tidak Aktif' }}
               </span>
             </td>
             <td class="px-6 py-4 text-center">
@@ -77,13 +74,17 @@
               </div>
             </td>
           </tr>
+          <tr v-if="warehouses.length === 0">
+            <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+              Belum ada data gudang yang tersedia.
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Form Modal -->
     <div v-if="showForm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-lg shadow-lg p-8 max-w-2xl w-full max-h-96 overflow-y-auto">
+      <div class="bg-white rounded-lg shadow-lg p-8 max-w-2xl w-full max-h-[85vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold">{{ editingId ? '✏️ Edit Gudang' : '➕ Tambah Gudang' }}</h2>
           <button
@@ -194,9 +195,22 @@ const fetchWarehouses = async () => {
     if (searchQuery.value) params.search = searchQuery.value
 
     const response = await api.get('warehouses', { params })
-    warehouses.value = response.data.data.data || []
+    
+    // FIXED: Mengecek struktur response agar fleksibel, baik pakai pagination maupun all() biasa
+    if (response.data && response.data.data) {
+      if (Array.isArray(response.data.data)) {
+        warehouses.value = response.data.data
+      } else if (response.data.data.data && Array.isArray(response.data.data.data)) {
+        warehouses.value = response.data.data.data
+      } else {
+        warehouses.value = []
+      }
+    } else {
+      warehouses.value = response.data || []
+    }
   } catch (error) {
     ElMessage.error('Gagal memuat gudang')
+    warehouses.value = []
   } finally {
     loading.value = false
   }

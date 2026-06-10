@@ -10,7 +10,6 @@
       </button>
     </div>
 
-    <!-- Filter -->
     <div class="bg-white rounded-lg shadow-md p-4 flex gap-4">
       <div class="flex-1">
         <label class="block text-sm font-semibold mb-2">Gudang</label>
@@ -47,12 +46,10 @@
       </div>
     </div>
 
-    <!-- Loading -->
     <div v-if="loading" class="text-center py-8">
       <p class="text-lg text-gray-600">⏳ Memuat rak...</p>
     </div>
 
-    <!-- Grid -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div
         v-for="shelf in shelves"
@@ -75,7 +72,7 @@
               @click="deleteShelf(shelf.id)"
               class="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition text-xs"
             >
-              🗑️
+              🗑️ Hapus
             </button>
           </div>
         </div>
@@ -86,7 +83,7 @@
         <div class="space-y-2 text-sm">
           <div class="flex justify-between">
             <span class="text-gray-600">Gudang:</span>
-            <span class="font-semibold">{{ shelf.warehouse?.name }}</span>
+            <span class="font-semibold">{{ shelf.warehouse?.name || 'Tidak Ada Gudang' }}</span>
           </div>
           <div class="flex justify-between">
             <span class="text-gray-600">Kapasitas:</span>
@@ -102,7 +99,6 @@
       </div>
     </div>
 
-    <!-- Form Modal -->
     <div v-if="showForm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div class="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
         <h2 class="text-2xl font-bold mb-6">{{ editingId ? '✏️ Edit Rak' : '➕ Tambah Rak' }}</h2>
@@ -111,7 +107,7 @@
           <div>
             <label class="block text-gray-700 font-semibold mb-2">Gudang *</label>
             <select
-              v-model.number="form.warehouse_id"
+              v-model="form.warehouse_id"
               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
               required
             >
@@ -214,7 +210,15 @@ const fetchShelves = async () => {
     if (searchQuery.value) params.search = searchQuery.value
 
     const response = await api.get('shelves', { params })
-    shelves.value = response.data.data.data || []
+    
+    // Fix Pembungkus Array Data Rak
+    if (response.data?.data?.data) {
+      shelves.value = response.data.data.data
+    } else if (response.data?.data) {
+      shelves.value = response.data.data
+    } else {
+      shelves.value = response.data || []
+    }
   } catch (error) {
     ElMessage.error('Gagal memuat rak')
   } finally {
@@ -225,7 +229,15 @@ const fetchShelves = async () => {
 const fetchWarehouses = async () => {
   try {
     const response = await api.get('warehouses?per_page=100')
-    warehouses.value = response.data.data.data || []
+    
+    // Fix Pembungkus Array Dropdown Gudang
+    if (response.data?.data?.data) {
+      warehouses.value = response.data.data.data
+    } else if (response.data?.data) {
+      warehouses.value = response.data.data
+    } else {
+      warehouses.value = response.data || []
+    }
   } catch (error) {
     console.error('Failed to fetch warehouses:', error)
   }
